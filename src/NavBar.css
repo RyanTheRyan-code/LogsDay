@@ -1,0 +1,32 @@
+.NavBar {
+    background-color: #333;
+    padding: 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+  
+  .NavBar ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .NavBar li {
+    margin: 0 15px;
+  }
+  
+  .NavBar a {
+    color: #E8DD13;
+    text-decoration: none;
+    font-size: 18px;
+  }
+  
+  .NavBar a:hover {
+    text-decoration: underline;
+  }
+  
