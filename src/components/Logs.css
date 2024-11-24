@@ -1,92 +1,133 @@
+/* Logs.css */
 .Logs {
-    text-align: center;
-    background-color: #938F3D; 
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    position: relative; 
-    z-index: 1;
-  }
-  
-  .Logs-logo {
-    width: 100px;
-    height: 100px;
-    margin: 20px;
-  }
-  
-  .feed {
-    width: 100%;
-    max-width: 50%;
-    margin: 0 auto; 
-    padding: 10px;
-    overflow-y: auto;
-    flex-grow: 1;
-  }
-  
-  .post {
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-    padding: 20px;
-    text-align: left;
-  }
-  
-  .post h3 {
-    margin: 0;
-    font-size: 1.2em;
-    color: #333;
-  }
-  
-  .post p {
-    font-size: 1em;
-    color: #555;
-  }
+  text-align: center;
+  background-color: #938F3D;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
 
-  .input-section {
-    margin: 20px auto;
-    max-width: 50%;
-    text-align: center;
-  }
-  
-  input[type="text"] {
-    padding: 10px;
-    width: 70%;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    margin-right: 10px;
-  }
-  
-  button {
-    padding: 10px 20px;
-    background-color: #E8C413;
-    color: rgb(133, 81, 23);
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  
-  button:hover {
-    background-color: #E8DD13;
-  }
+.Logs-logo {
+  width: 100px;
+  height: 100px;
+  margin: 20px;
+}
 
-  .wood {
-    position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 70%;
-    height: 100vh;
-    background-color: rgb(133, 81, 23);
-    z-index: -1;
-  }
-  
-  .App-header {
-    position: relative;
-    z-index: 2; 
-    text-align: center;
-  }
+.feed {
+  width: 100%;
+  max-width: 50%;
+  margin: 0 auto;
+  padding: 10px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
 
-  .App-header h1, .App-header p {
-    color: rgb(133, 81, 23);
-  }
+.post {
+  background-color: #d2b48c;
+  border-radius: 15px; /* Rounded corners */
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  padding: 20px;
+  text-align: left;
+  border: 2px solid #d2b48c; /* Light brown border */
+}
+
+.post h3 {
+  font-weight: bold;
+  font-size: 1.5em;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.post-author {
+  font-size: 0.9em;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.post-image-placeholder {
+  text-align: center;
+  margin: 15px 0;
+}
+
+.post-image-placeholder img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.post-description {
+  margin-top: 10px;
+  font-size: 1em;
+  color: #333;
+}
+
+.post p {
+  white-space: pre-wrap; /* Preserve newlines */
+}
+
+.input-section {
+  margin: 20px auto;
+  max-width: 50%;
+  text-align: center;
+}
+
+/* Style for the input fields */
+.input-section textarea {
+  padding: 10px;
+  width: 70%; /* You can adjust this to fit your layout */
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px; /* Spacing between fields */
+  display: block;
+  resize: vertical; /* Allows users to resize the textarea vertically */
+}
+
+
+input[type="text"] {
+  padding: 10px;
+  width: 70%;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-bottom: 10px; /* Adjust for spacing between title and content */
+  display: block;
+}
+
+button {
+  padding: 10px 20px;
+  background-color: #E8C413;
+  color: rgb(133, 81, 23);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #E8DD13;
+}
+
+
+.wood {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  height: 100vh;
+  background-color: rgb(133, 81, 23);
+  z-index: -1;
+}
+
+.App-header {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.App-header h1,
+.App-header p {
+  color: rgb(133, 81, 23);
+}

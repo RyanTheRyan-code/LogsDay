@@ -2,7 +2,7 @@ import React from 'react';
 import logo from './logo.png';
 import Header from './Header';
 import '../App.css';
-import NavBar from '../NavBar';
+import NavBar from './NavBar';
 
 function Home() {
     

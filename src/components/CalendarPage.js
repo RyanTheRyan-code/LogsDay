@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Calendar from './Calendar';
 import './Calendar.css';
 import { isSameDay } from 'date-fns';
-import NavBar from '../NavBar';
+import NavBar from './NavBar';
 
 function CalendarPage() {
   const [date, setDate] = useState(new Date());
