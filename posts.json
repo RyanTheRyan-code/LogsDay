@@ -1,0 +1,30 @@
+[
+  {
+    "id": null,
+    "title": "The irremovable post",
+    "content": "i dare you to try",
+    "imageUrl": "",
+    "author": "God"
+  },
+  {
+    "id": 2,
+    "title": "Logs Day #384 ",
+    "content": "# BAK B AKR BAKR BAEK BARK B AKR BARK BARK BARK BARK BAR \n\n*Indiana more li... lke... more like uh, like uh... Iniana deeze... uhh nus... well. ok well.",
+    "imageUrl": "",
+    "author": "User2"
+  },
+  {
+    "id": 3,
+    "title": "opoop",
+    "content": "poop",
+    "imageUrl": "http://localhost:3001/uploads/1728584407237.png",
+    "author": "User3"
+  },
+  {
+    "id": 4,
+    "title": "why wont it work",
+    "content": "# grr",
+    "imageUrl": "http://localhost:3001/uploads/1732421867405.jpg",
+    "author": "User4"
+  }
+]
