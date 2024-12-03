@@ -1,213 +1,706 @@
-// Import required modules
-require('dotenv').config();
+// grab all the stuff we need
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const multer = require('multer');
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { signup, login, authenticateToken } = require('./services/auth');
+const multer = require('multer');
+const path = require('path');
+const db = require('./db/config');
+require('dotenv').config();
+const fs = require('fs');
 
 const app = express();
-const port = 3001;
-const postsFilePath = path.join(__dirname, 'posts.json');
-const accountsFilePath = path.join(__dirname, 'accounts.json');
+const port = process.env.PORT || 3001;
 
-app.use(cors()); // Enable CORS for all routes
-app.use(express.json()); // Parse incoming JSON requests
+// setup cors so frontend can talk to us
+app.use(cors({
+  origin: process.env.CORS_ORIGIN,
+  credentials: true
+}));
+app.use(express.json());
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// serve uploaded files
+app.use('/uploads', (req, res, next) => {
+  console.log('Accessing uploaded file:', req.url);
+  next();
+}, express.static('uploads'));
 
-// Passport configuration for Google OAuth
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: '/auth/google/callback',
-    },
-    (accessToken, refreshToken, profile, done) => {
-      // Here you would find or create a user in your database
-      const user = { id: profile.id, email: profile.emails[0].value };
-      return done(null, user);
-    }
-  )
-);
-
-app.use(passport.initialize());
-
-// Ensure 'uploads' folder exists
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
-
-// Set up multer for file storage
+// setup where to save files
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir); // Use absolute path for uploads
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
   },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
+  filename: function (req, file, cb) {
+    // make unique filename so nothing gets overwritten
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
 });
 
-const upload = multer({ storage: storage });
-
-// Helper function to save account information to accounts.json
-const saveAccountToFile = (account) => {
-  let accounts = [];
-  if (fs.existsSync(accountsFilePath)) {
-    try {
-      const data = fs.readFileSync(accountsFilePath, 'utf-8');
-      accounts = JSON.parse(data);
-    } catch (error) {
-      console.error('Error reading accounts.json:', error);
-      accounts = [];
-    }
-  }
-
-  accounts.push(account);
-
-  try {
-    fs.writeFileSync(accountsFilePath, JSON.stringify(accounts, null, 2));
-    console.log('Account successfully saved to accounts.json');
-  } catch (error) {
-    console.error('Error writing to accounts.json:', error);
+// only let em upload pics & vids
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only images and videos are allowed!'), false);
   }
 };
 
-// User signup route
-app.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
+// setup file upload with size limit
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // max 50mb
+  }
+});
+
+// google oauth setup
+const client = new OAuth2Client({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  redirectUri: `${process.env.BACKEND_URL}/auth/google/callback`
+});
+
+// check if user's logged in
+const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.sendStatus(401);
+  }
+
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const token = await signup(email, hashedPassword);
-    const account = { email, password: hashedPassword, token };
-    saveAccountToFile(account);
+    // make sure token is legit
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // check if user exists
+    const user = await db('profiles')
+      .where({ id: decoded.id, email: decoded.email })
+      .first();
+
+    if (!user) {
+      return res.sendStatus(403);
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Auth error:', error);
+    return res.sendStatus(403);
+  }
+};
+
+// get all projects for user
+app.get('/projects', authenticateToken, async (req, res) => {
+  try {
+    const projects = await db('projects')
+      .where({ profile_id: req.user.id })
+      .orderBy('created_at', 'desc');
+    res.json(projects);
+  } catch (error) {
+    console.error('Error fetching projects:', error);
+    res.status(500).json({ error: 'Failed to fetch projects' });
+  }
+});
+
+// make a new project
+app.post('/projects', authenticateToken, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    console.log('Creating project with:', { name, description, profile_id: req.user.id });
+    
+    const [project] = await db('projects')
+      .insert({
+        profile_id: req.user.id,
+        name,
+        description,
+        created_at: db.fn.now()
+      })
+      .returning('*');
+      
+    console.log('Created project:', project);
+    res.json(project);
+  } catch (error) {
+    console.error('Error creating project:', error);
+    res.status(500).json({ error: 'Failed to create project' });
+  }
+});
+
+// get a project by id
+app.get('/projects/:id', authenticateToken, async (req, res) => {
+  try {
+    const project = await db('projects')
+      .where({ 
+        'projects.id': req.params.id
+      })
+      .first();
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    res.json(project);
+  } catch (error) {
+    console.error('Error fetching project:', error);
+    res.status(500).json({ error: 'Failed to fetch project' });
+  }
+});
+
+// get all posts for a project
+app.get('/projects/:id/posts', authenticateToken, async (req, res) => {
+  try {
+    const posts = await db('posts')
+      .join('profiles', 'posts.profile_id', 'profiles.id')
+      .leftJoin('media', 'posts.id', 'media.post_id')
+      .leftJoin('projects', 'posts.project_id', 'projects.id')
+      .where('posts.project_id', req.params.id)
+      .select(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.post_index',
+        'posts.project_id',
+        'projects.name as project_name',
+        'profiles.name as author_name',
+        'profiles.email as author_email',
+        'profiles.profile_picture_url',
+        db.raw('COALESCE(json_agg(media.* ORDER BY media.created_at) FILTER (WHERE media.id IS NOT NULL), \'[]\'::json) as media')
+      )
+      .groupBy(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.post_index',
+        'posts.project_id',
+        'projects.name',
+        'profiles.name',
+        'profiles.email',
+        'profiles.profile_picture_url'
+      )
+      .orderBy('posts.post_index', 'asc');
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching project posts:', error);
+    res.status(500).json({ error: 'Failed to fetch project posts' });
+  }
+});
+
+// google oauth redirect
+app.get('/auth/google', (req, res) => {
+  const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(`${process.env.BACKEND_URL}/auth/google/callback`)}&response_type=code&scope=email%20profile&access_type=offline`.replace(/\s+/g, '');
+  res.redirect(redirectUrl);
+});
+
+// google oauth callback
+app.get('/auth/google/callback', async (req, res) => {
+  try {
+    console.log('Received OAuth callback with code:', req.query.code);
+    const code = req.query.code;
+    
+    console.log('Getting tokens from Google...');
+    const { tokens } = await client.getToken({
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: `${process.env.BACKEND_URL}/auth/google/callback`
+    });
+    console.log('Received tokens from Google');
+
+    console.log('Verifying ID token...');
+    const ticket = await client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    console.log('ID token verified');
+
+    const payload = ticket.getPayload();
+    const { email, name, picture } = payload;
+    console.log('User info:', { email, name });
+
+    console.log('Checking if user exists in database...');
+    let user = await db('profiles')
+      .where({ email })
+      .first();
+
+    if (!user) {
+      console.log('Creating new user...');
+      const [newUser] = await db('profiles')
+        .insert({
+          email,
+          name,
+          profile_picture_url: picture,
+          oauth_provider: 'google'
+        })
+        .returning(['id', 'email', 'name']);
+      user = newUser;
+      console.log('New user created:', user);
+    } else {
+      console.log('Existing user found:', user);
+    }
+
+    console.log('Generating JWT...');
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    console.log('JWT generated');
+
+    const redirectUrl = `${process.env.FRONTEND_URL}/oauth-callback?token=${token}`;
+    console.log('Redirecting to:', redirectUrl);
+    res.redirect(redirectUrl);
+  } catch (error) {
+    console.error('Detailed OAuth error:', {
+      message: error.message,
+      stack: error.stack,
+      details: error.response?.data || error
+    });
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
+  }
+});
+
+// google oauth token exchange
+app.post('/auth/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const payload = ticket.getPayload();
+
+    let user = await db('profiles')
+      .where({ email: payload.email })
+      .first();
+
+    if (!user) {
+      const [userId] = await db('profiles')
+        .insert({
+          email: payload.email,
+          name: payload.name,
+          profile_picture_url: payload.picture,
+          is_google_user: true,
+          google_id: payload.sub
+        })
+        .returning('id');
+
+      user = { id: userId, email: payload.email };
+    }
+
+    const jwtToken = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({ token: jwtToken });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+// signup endpoint
+app.post('/signup', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    const existingUser = await db('profiles')
+      .where({ email })
+      .first();
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    const [user] = await db('profiles')
+      .insert({
+        email,
+        name,
+        password_hash: passwordHash
+      })
+      .returning(['id', 'email']);
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
     res.json({ token });
   } catch (error) {
-    console.error('Error during signup:', error);
-    res.status(500).send('Signup failed');
+    console.error('Signup error:', error);
+    res.status(500).json({ error: 'Signup failed' });
   }
 });
 
-// User login route
+// login endpoint
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
   try {
-    let accounts = [];
-    if (fs.existsSync(accountsFilePath)) {
-      const data = fs.readFileSync(accountsFilePath, 'utf-8');
-      accounts = JSON.parse(data);
+    const { email, password } = req.body;
+
+    const user = await db('profiles')
+      .where({ email })
+      .first();
+
+    if (!user || !user.password_hash) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
-    const user = accounts.find(account => account.email === email);
-    if (user && await bcrypt.compare(password, user.password)) {
-      console.log(true);
-      res.status(200).send('Login successful');
-    } else {
-      throw new Error('Invalid credentials');
+
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    const token = jwt.sign(
+      { id: user.id, email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    await db('profiles')
+      .where({ id: user.id })
+      .update({ last_login: db.fn.now() });
+
+    res.json({ token });
   } catch (error) {
-    console.error('Error during login:', error);
-    res.status(401).send('Invalid credentials');
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
-// Google OAuth routes
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-app.get(
-  '/auth/google/callback',
-  passport.authenticate('google', { session: false, failureRedirect: 'http://localhost:3000/login' }),
-  (req, res) => {
-    // Generate JWT token
-    const token = jwt.sign({ id: req.user.id }, process.env.JWT_SECRET || 'secretKey', { expiresIn: '1h' });
-    // Redirect to frontend with token
-    res.redirect(`http://localhost:3000/auth/google/callback?token=${token}`);
-  }
-);
-
-// Protected endpoint to retrieve posts
-app.get('/posts', authenticateToken, (req, res) => {
-  if (fs.existsSync(postsFilePath)) {
-    try {
-      const data = fs.readFileSync(postsFilePath, 'utf-8');
-      const posts = JSON.parse(data);
-      res.json(Array.isArray(posts) ? posts : []);
-    } catch (error) {
-      console.error('Error parsing posts.json:', error);
-      res.json([]);
-    }
-  } else {
-    res.json([]);
-  }
-});
-
-// Protected endpoint to save posts
-app.post('/posts', authenticateToken, (req, res) => {
-  const newPost = req.body;
-  console.log('Received new post:', newPost);
-
-  let posts = [];
-  if (fs.existsSync(postsFilePath)) {
-    try {
-      const data = fs.readFileSync(postsFilePath, 'utf-8');
-      posts = JSON.parse(data);
-    } catch (error) {
-      console.error('Error reading posts.json:', error);
-      posts = [];
-    }
-  }
-
-  posts.push(newPost);
-
+// get all posts for user
+app.get('/posts', authenticateToken, async (req, res) => {
   try {
-    fs.writeFileSync(postsFilePath, JSON.stringify(posts, null, 2));
-    console.log('Posts successfully saved to posts.json');
-    res.status(201).send('Post saved');
-  } catch (error) {
-    console.error('Error writing to posts.json:', error);
-    res.status(500).send('Failed to save post');
-  }
-});
+    console.log('Fetching posts for user:', req.user);
+    
+    let query = db('posts')
+      .join('profiles', 'posts.profile_id', 'profiles.id')
+      .leftJoin('projects', 'posts.project_id', 'projects.id')
+      .leftJoin('media', 'posts.id', 'media.post_id');
 
-// Protected endpoint to handle image upload
-app.post('/upload', authenticateToken, upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-  const filePath = `/uploads/${req.file.filename}`; // Use relative path for URL
-  res.json({ imageUrl: filePath });
-});
-
-// Endpoint to delete posts (protected)
-app.delete('/posts/:id', authenticateToken, (req, res) => {
-  const postId = parseInt(req.params.id);
-  console.log('Delete request for post with id:', postId);
-
-  if (fs.existsSync(postsFilePath)) {
-    try {
-      const data = fs.readFileSync(postsFilePath, 'utf-8');
-      let posts = JSON.parse(data);
-      posts = posts.filter(post => post.id !== postId);
-      fs.writeFileSync(postsFilePath, JSON.stringify(posts, null, 2));
-      console.log(`Post with id ${postId} removed`);
-      res.status(200).send('Post deleted');
-    } catch (error) {
-      console.error('Error deleting post:', error);
-      res.status(500).send('Failed to delete post');
+    if (req.query.date) {
+      const date = new Date(req.query.date);
+      const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+      
+      console.log('Date filter:', { startOfDay, endOfDay });
+      query = query.whereBetween('posts.created_at', [startOfDay, endOfDay]);
     }
-  } else {
-    res.status(404).send('Post not found');
+
+    const sql = query.toString();
+    console.log('SQL Query:', sql);
+
+    const posts = await query
+      .select(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.streak_day',
+        'posts.project_id',
+        'posts.profile_id',
+        'projects.name as project_name',
+        'profiles.name as author_name',
+        'profiles.email as author_email',
+        'profiles.profile_picture_url',
+        db.raw('COALESCE(json_agg(media.* ORDER BY media.created_at) FILTER (WHERE media.id IS NOT NULL), \'[]\'::json) as media')
+      )
+      .groupBy(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.streak_day',
+        'posts.project_id',
+        'posts.profile_id',
+        'projects.name',
+        'profiles.name',
+        'profiles.email',
+        'profiles.profile_picture_url'
+      )
+      .orderBy('posts.created_at', 'desc');
+
+    console.log('Found posts:', posts.length);
+    console.log('Sample post:', posts[0]);
+
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
 
-// Start the server
+// get all posts for a project
+app.get('/projects/:id/posts', authenticateToken, async (req, res) => {
+  try {
+    const posts = await db('posts')
+      .join('profiles', 'posts.profile_id', 'profiles.id')
+      .leftJoin('media', 'posts.id', 'media.post_id')
+      .leftJoin('projects', 'posts.project_id', 'projects.id')
+      .where('posts.project_id', req.params.id)
+      .select(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.post_index',
+        'posts.project_id',
+        'projects.name as project_name',
+        'profiles.name as author_name',
+        'profiles.email as author_email',
+        'profiles.profile_picture_url',
+        db.raw('COALESCE(json_agg(media.* ORDER BY media.created_at) FILTER (WHERE media.id IS NOT NULL), \'[]\'::json) as media')
+      )
+      .groupBy(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.post_index',
+        'posts.project_id',
+        'projects.name',
+        'profiles.name',
+        'profiles.email',
+        'profiles.profile_picture_url'
+      )
+      .orderBy('posts.post_index', 'asc');
+
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching project posts:', error);
+    res.status(500).json({ error: 'Failed to fetch project posts' });
+  }
+});
+
+// create a new post
+app.post('/posts', authenticateToken, upload.array('images'), async (req, res) => {
+  try {
+    console.log('Received post request with body:', req.body);
+    console.log('Received files:', req.files);
+    console.log('User:', req.user);
+
+    const { title, content, project_id } = req.body;
+    
+    if (!project_id) {
+      return res.status(400).json({ error: 'Project ID is required' });
+    }
+
+    console.log('Creating post with:', { title, content, project_id, userId: req.user.id });
+    
+    const result = await db('posts')
+      .where({ project_id })
+      .count('id as count')
+      .first();
+    const post_index = parseInt(result.count) + 1;
+
+    console.log('Next post index:', post_index);
+
+    const [newPost] = await db('posts')
+      .insert({
+        profile_id: req.user.id,
+        project_id,
+        title,
+        content,
+        post_index,
+        created_at: db.fn.now(),
+        streak_day: req.body.streak_day
+      })
+      .returning('*');
+
+    console.log('Created post:', newPost);
+
+    let mediaData = [];
+    if (req.files && req.files.length > 0) {
+      const mediaEntries = req.files.map(file => ({
+        post_id: newPost.id,
+        url: `/uploads/${file.filename}`,
+        type: file.mimetype.startsWith('image/') ? 'image' : 'video',
+        filename: file.originalname,
+        created_at: db.fn.now()
+      }));
+
+      mediaData = await db('media').insert(mediaEntries).returning('*');
+    }
+
+    const [completePost] = await db('posts')
+      .join('profiles', 'posts.profile_id', 'profiles.id')
+      .leftJoin('projects', 'posts.project_id', 'projects.id')
+      .leftJoin('media', 'posts.id', 'media.post_id')
+      .where('posts.id', newPost.id)
+      .select(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.streak_day',
+        'posts.project_id',
+        'profiles.name as author_name',
+        'profiles.email as author_email',
+        'profiles.profile_picture_url',
+        'projects.name as project_name',
+        db.raw('COALESCE(json_agg(media.* ORDER BY media.created_at) FILTER (WHERE media.id IS NOT NULL), \'[]\'::json) as media')
+      )
+      .groupBy(
+        'posts.id',
+        'posts.title',
+        'posts.content',
+        'posts.created_at',
+        'posts.streak_day',
+        'posts.project_id',
+        'profiles.name',
+        'profiles.email',
+        'profiles.profile_picture_url',
+        'projects.name'
+      );
+
+    if (!completePost.media || completePost.media[0] === null) {
+      completePost.media = [];
+    }
+
+    console.log('Returning complete post:', completePost);
+    res.json(completePost);
+  } catch (error) {
+    console.error('Error creating post:', error);
+    console.error('Full error:', error);
+    res.status(500).json({ error: 'Failed to create post', details: error.message });
+  }
+});
+
+// delete a post
+app.delete('/posts/:id', authenticateToken, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const userId = req.user.id;
+
+    const post = await db('posts')
+      .where({ id: postId })
+      .first();
+
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    if (post.profile_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized: You can only delete your own posts' });
+    }
+
+    const media = await db('media')
+      .where({ post_id: postId });
+
+    for (const file of media) {
+      if (file.url) {
+        const filePath = path.join(__dirname, file.url);
+        try {
+          await fs.promises.unlink(filePath);
+        } catch (error) {
+          console.error('Error deleting file:', error);
+        }
+      }
+    }
+
+    await db('media')
+      .where({ post_id: postId })
+      .delete();
+
+    await db('posts')
+      .where({ id: postId })
+      .delete();
+
+    res.json({ message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
+});
+
+// get all post dates for user
+app.get('/posts/dates', authenticateToken, async (req, res) => {
+  try {
+    const dates = await db('posts')
+      .where('profile_id', req.user.id)
+      .distinct('created_at')
+      .orderBy('created_at', 'desc');
+    
+    res.json(dates.map(d => d.created_at));
+  } catch (error) {
+    console.error('Error fetching post dates:', error);
+    res.status(500).json({ error: 'Failed to fetch post dates' });
+  }
+});
+
+// get user profile
+app.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const profile = await db('profiles')
+      .where({ id: userId })
+      .first();
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    const socialLinks = await db('social_links')
+      .where({ profile_id: userId });
+
+    res.json({
+      ...profile,
+      social_links: socialLinks
+    });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// update user profile
+app.put('/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { name, bio, social_links } = req.body;
+
+    await db('profiles')
+      .where({ id: userId })
+      .update({
+        name,
+        bio,
+        updated_at: db.fn.now()
+      });
+
+    if (social_links) {
+      await db('social_links')
+        .where({ profile_id: userId })
+        .del();
+
+      if (social_links.length > 0) {
+        const linkEntries = social_links.map(link => ({
+          profile_id: userId,
+          platform: link.platform,
+          url: link.url
+        }));
+
+        await db('social_links').insert(linkEntries);
+      }
+    }
+
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// start server
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running on port ${port}`);
 });
