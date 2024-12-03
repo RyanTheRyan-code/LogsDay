@@ -19,7 +19,7 @@ const NavBar = () => {
           {token ? (
             <>
               <li><Link to="/calendar">Calendar</Link></li>
-              <li><Link to="/logs">Logs</Link></li>
+              <li><Link to="/">Logs</Link></li>
               <li><button className="logout-button" onClick={handleLogout}>Logout</button></li>
             </>
           ) : (

@@ -1,55 +1,223 @@
+// handles individual post display and actions
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './Logs.css';
-import ReactMarkdown from 'react-markdown'; // For markdown support
 
 function Post({ post, onDelete }) {
+  const navigate = useNavigate();
+
+  // yeet the post
   const handleDelete = async () => {
-    const confirmed = window.confirm(`Are you sure you want to delete the post: "${post.title}"?`);
-    if (confirmed) {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:3001/posts/${post.id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (response.ok) {
-          onDelete(post.id); // Call the onDelete function to refresh the posts
-        } else {
-          console.error('Failed to delete the post');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/posts/${post.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
         }
-      } catch (error) {
-        console.error('Error deleting post:', error);
+      });
+
+      if (response.ok) {
+        onDelete(post.id);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to delete post');
       }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Error deleting post');
+    }
+  };
+
+  // get current user email
+  const getCurrentUserEmail = () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.email;
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  };
+
+  // check if current user is post author
+  const isCurrentUserPost = getCurrentUserEmail() === post.author_email;
+
+  // jump to the project page
+  const handleProjectClick = (e) => {
+    e.stopPropagation();
+    if (post.project_id) {
+      navigate(`/projects/${post.project_id}`);
+    }
+  };
+
+  // format the date all nice
+  const formatDate = (dateString) => {
+    const options = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  // get project name
+  const getProjectName = () => {
+    return post.project_name || 'Unknown Project';
+  };
+
+  // get media url
+  const getMediaUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return `http://localhost:3001${url}`;
+  };
+
+  // download media
+  const handleDownload = async (media) => {
+    try {
+      const mediaUrl = getMediaUrl(media.url);
+      const response = await fetch(mediaUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = media.filename || 'download';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error downloading media:', error);
     }
   };
 
   return (
-    <div className="post">
-      <h3>{post.title}</h3>
-      <p>By: {post.author}</p>
-      {post.imageUrl && (
-        <div className="post-image-placeholder">
-          <img 
-            src={`http://localhost:3001${post.imageUrl}`} 
-            alt="Post visual" 
-            onError={(e) => {
-              console.error('Image failed to load:', post.imageUrl);
-              e.target.style.display = 'none';
-            }}
-          />
+    <article className="post">
+      <div className="post-header">
+        <div>
+          <h2 className="post-title">{post.title}</h2>
+          <div className="post-metadata">
+            <span 
+              className="project-tag clickable" 
+              onClick={handleProjectClick}
+              title="Click to view project"
+              role="button"
+              style={{ cursor: 'pointer' }}
+            >
+              {getProjectName()}
+            </span>
+            <span className="author-tag">
+              By {post.author_name || 'Anonymous'}
+            </span>
+            <span>{formatDate(post.created_at)}</span>
+            {post.streak_day && <span>Streak Day {post.streak_day}</span>}
+          </div>
+        </div>
+        {isCurrentUserPost && (
+          <button className="button secondary" onClick={handleDelete}>
+            Delete
+          </button>
+        )}
+      </div>
+
+      <div className="post-content">
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          components={{
+            h1: ({node, children, ...props}) => (
+              <h1 style={{
+                fontSize: '2em',
+                fontWeight: '600',
+                lineHeight: '1.25',
+                marginBottom: '16px',
+                marginTop: '24px',
+                border: 'none'
+              }} {...props}>{children}</h1>
+            ),
+            h2: ({node, children, ...props}) => (
+              <h2 style={{
+                fontSize: '1.5em',
+                fontWeight: '600',
+                lineHeight: '1.25',
+                marginBottom: '16px',
+                marginTop: '24px',
+                border: 'none'
+              }} {...props}>{children}</h2>
+            ),
+            code: ({node, inline, ...props}) => (
+              <code style={inline ? {
+                background: '#f6f8fa',
+                padding: '0.2em 0.4em',
+                borderRadius: '3px'
+              } : {}} {...props}/>
+            ),
+            pre: ({node, ...props}) => (
+              <pre style={{
+                background: '#f6f8fa',
+                padding: '16px',
+                borderRadius: '6px',
+                overflow: 'auto'
+              }} {...props}/>
+            ),
+            blockquote: ({node, ...props}) => (
+              <blockquote style={{
+                borderLeft: '4px solid #ddd',
+                paddingLeft: '1em',
+                margin: '1em 0',
+                color: '#666'
+              }} {...props}/>
+            ),
+            a: ({node, ...props}) => (
+              <a style={{color: '#0366d6', textDecoration: 'none'}} {...props}/>
+            )
+          }}
+        >
+          {post.content}
+        </ReactMarkdown>
+      </div>
+
+      {post.media && post.media.length > 0 && (
+        <div className={`media-container ${post.media.length === 1 ? 'single-media' : ''}`}>
+          {post.media.map((media, index) => {
+            const isVideo = media.type === 'video';
+            const mediaUrl = getMediaUrl(media.url);
+            
+            return (
+              <div key={index} className="media-item">
+                {isVideo ? (
+                  <video
+                    src={mediaUrl}
+                    controls
+                    className="media-content"
+                  />
+                ) : (
+                  <img
+                    src={mediaUrl}
+                    alt={`Post media ${index + 1}`}
+                    className="media-content"
+                  />
+                )}
+                <button 
+                  className="download-button"
+                  onClick={() => handleDownload(media)}
+                  title="Download media"
+                >
+                  ↓
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
-
-      {/* Render markdown content with proper new line handling */}
-      <ReactMarkdown children={post.content} />
-
-      {/* Delete Button */}
-      <button onClick={handleDelete} style={{ marginTop: '10px', backgroundColor: 'red', color: 'white' }}>
-        Delete
-      </button>
-    </div>
+    </article>
   );
 }
 

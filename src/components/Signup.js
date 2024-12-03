@@ -5,6 +5,7 @@ import './LoginSignup.css';
 const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const navigate = useNavigate();
 
   const handleSignup = async (e) => {
@@ -13,7 +14,7 @@ const Signup = () => {
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, name })
       });
       const data = await response.json();
       if (data.token) {
@@ -24,6 +25,7 @@ const Signup = () => {
       }
     } catch (error) {
       console.error('Error:', error);
+      alert('Signup failed: ' + (error.message || 'Unknown error'));
     }
   };
 
@@ -32,9 +34,28 @@ const Signup = () => {
       <div className="wood"></div>
       <div className="form-container">
         <form onSubmit={handleSignup} className="login-signup-form">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
-          <button type="submit">Signup</button>
+          <input 
+            type="text" 
+            value={name} 
+            onChange={(e) => setName(e.target.value)} 
+            placeholder="Full Name" 
+            required 
+          />
+          <input 
+            type="email" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
+            placeholder="Email" 
+            required 
+          />
+          <input 
+            type="password" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)} 
+            placeholder="Password" 
+            required 
+          />
+          <button type="submit">Sign Up</button>
           <a href={`${process.env.REACT_APP_BACKEND_URL}/auth/google`}>
             <button type="button" className="oauth-button">Sign Up with Google</button>
           </a>

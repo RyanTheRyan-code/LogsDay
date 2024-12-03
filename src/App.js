@@ -1,5 +1,5 @@
+// main app setup - routes n stuff
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import Home from './components/Home';
 import Calendar from './components/CalendarPage';
 import Logs from './components/Logs';
 import Login from './components/Login';
@@ -7,6 +7,7 @@ import Signup from './components/Signup';
 import PrivateRoute from './components/PrivateRoute';
 import NavBar from './components/NavBar';
 import GoogleCallback from './components/GoogleCallback';
+import Projects from './components/Projects';
 
 function App() {
   return (
@@ -15,12 +16,15 @@ function App() {
         <NavBar />
         <div className="content">
           <Routes>
-            <Route path="/" element={<Home />} />
+            { /* all our pages */ }
+            <Route path="/" element={<Logs />} />
+            <Route path="/projects/:id" element={<Projects />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/calendar" element={<PrivateRoute element={Calendar} />} />
-            <Route path="/logs" element={<PrivateRoute element={Logs} />} />
+            { /* google auth stuff */ }
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
+            <Route path="/oauth-callback" element={<GoogleCallback />} />
           </Routes>
         </div>
       </div>

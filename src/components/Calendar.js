@@ -1,47 +1,53 @@
 import React, { useState } from 'react';
 import './Calendar.css';
-import IconButton from '@mui/material/IconButton';
-import ArrowBackIosIcon from '@mui/icons-material/SwipeLeftAlt';
-import ArrowForwardIosIcon from '@mui/icons-material/SwipeRightAlt';
-
 import Button from '@mui/material/Button';
 
 function Calendar() {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
+  // grab today's date stuff
+  const today = new Date();
+  const todayDay = today.getDate();
+  const todayMonth = today.getMonth();
+  const todayYear = today.getFullYear();
   
+  // keep track of what month we're showing
+  const [displayedMonth, setDisplayedMonth] = useState(todayMonth);
+  const [displayedYear, setDisplayedYear] = useState(todayYear);
+  const [clickedDay, setClickedDay] = useState(null);
+
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
   
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Log', 'Thu', 'Fri', 'Sat'];
-
-  const [clickedDay, setClickedDay] = useState(null);
-  const [displayedMonth, setDisplayedMonth] = useState(currentMonth);
-  const [displayedYear, setDisplayedYear] = useState(currentYear);
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const handleDayClick = (day) => {
     setClickedDay(day);
+    // temp alert for testing
+    alert(`Clicked: ${day}, Today is: ${todayDay}`);
   };
 
   const goToPreviousMonth = () => {
-    const newMonth = (displayedMonth === 0) ? 11 : displayedMonth - 1;
-    const newYear = (displayedMonth === 0) ? displayedYear - 1 : displayedYear;
-    setDisplayedMonth(newMonth);
-    setDisplayedYear(newYear);
+    if (displayedMonth === 0) {
+      setDisplayedMonth(11);
+      setDisplayedYear(displayedYear - 1);
+    } else {
+      setDisplayedMonth(displayedMonth - 1);
+    }
     setClickedDay(null);
   };
 
   const goToNextMonth = () => {
-    const newMonth = (displayedMonth === 11) ? 0 : displayedMonth + 1;
-    const newYear = (displayedMonth === 11) ? displayedYear + 1 : displayedYear;
-    setDisplayedMonth(newMonth);
-    setDisplayedYear(newYear);
+    if (displayedMonth === 11) {
+      setDisplayedMonth(0);
+      setDisplayedYear(displayedYear + 1);
+    } else {
+      setDisplayedMonth(displayedMonth + 1);
+    }
     setClickedDay(null);
   };
 
+  // starting point for our calendar math
   const septemberFirst2024 = new Date(2024, 8, 1);
   const referenceDay = septemberFirst2024.getDay();
 
@@ -91,30 +97,24 @@ function Calendar() {
   return (
     <div className="calendar">
       <div className="wood"></div>
+      <div className="calendar-content">
         <div className="calendar-navigation">
-          <IconButton
-            onClick={goToPreviousMonth}
-            className="icon-button"
-          >
-            <ArrowBackIosIcon />
-          </IconButton>
-          <IconButton
-            onClick={goToNextMonth}
-            className="icon-button"
-          > 
-            <ArrowForwardIosIcon />
-          </IconButton>
+          <Button onClick={goToPreviousMonth}>
+            Previous Month
+          </Button>
+          <h2>{monthNames[displayedMonth]} {displayedYear}</h2>
+          <Button onClick={goToNextMonth}>
+            Next Month
+          </Button>
         </div>
-        <div className="calendar-header">
-          <div className="button-container">
-            <h2>{monthNames[displayedMonth]} {displayedYear}</h2>
-          </div>
+        <div className="debug-info">
+          Today is: {todayDay} {monthNames[todayMonth]} {todayYear}
         </div>
         <table>
           <thead>
             <tr>
-              {weekDays.map(day => (
-                <th key={day}>{day}</th>
+              {weekDays.map((day, index) => (
+                <th key={index}>{day}</th>
               ))}
             </tr>
           </thead>
@@ -122,18 +122,23 @@ function Calendar() {
             {weeksArray.map((week, weekIndex) => (
               <tr key={weekIndex}>
                 {week.map((day, dayIndex) => {
-                  const isCurrentDay = new Date(displayedYear, displayedMonth, day).toDateString() === currentDate.toDateString();
-                  const isClickedDay = clickedDay === day;
-                  let classNames = '';
-                  if (isCurrentDay) classNames += ' current-day';
-                  if (isClickedDay) classNames += ' clicked-day';
+                  const isCurrentDay = day === todayDay && 
+                                     displayedMonth === todayMonth && 
+                                     displayedYear === todayYear;
+                  
                   return (
-                    <td
-                    key={dayIndex}
-                    className={classNames.trim()}
-                    onClick={() => handleDayClick(day)}
+                    <td 
+                      key={dayIndex} 
+                      className={`
+                        ${day ? '' : 'other-month'}
+                        ${isCurrentDay ? 'today' : ''}
+                      `.trim()}
+                      onClick={() => day && handleDayClick(day)}
                     >
-                      {day}
+                      <div>
+                        {day}
+                        {isCurrentDay && ' (Today)'}
+                      </div>
                     </td>
                   );
                 })}
@@ -141,6 +146,7 @@ function Calendar() {
             ))}
           </tbody>
         </table>
+      </div>
     </div>
   );
 }

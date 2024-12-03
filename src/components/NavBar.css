@@ -1,15 +1,12 @@
 .NavBar {
-  background-color: #333;
-  padding: 10px 20px;
+  background: linear-gradient(to bottom, #855117, rgb(113, 61, 3));
+  padding: 15px 20px;
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .nav-container {
@@ -19,49 +16,81 @@
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  box-sizing: border-box;
+  padding: 0 15px;
 }
 
 .nav-logo {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: bold;
-  color: #E8DD13;
+  margin-right: auto;
 }
 
 .nav-logo a {
   text-decoration: none;
-  color: #E8DD13;
+  color: #e1bc29;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  transition: color 0.2s ease;
+}
+
+.nav-logo a:hover {
+  color: #297045;
 }
 
 .nav-links {
   list-style: none;
   display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 30px;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+
+.nav-links li {
+  margin: 0;
+  padding: 0;
 }
 
 .nav-links a {
-  color: #E8DD13;
+  color: #e1bc29;
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+  padding: 5px 10px;
+  border-radius: 4px;
 }
 
 .nav-links a:hover {
-  text-decoration: underline;
+  color: #297045;
+  text-decoration: none;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .logout-button {
   background: none;
-  border: none;
-  color: #E8DD13;
+  border: 2px solid #e1bc29;
+  color: #e1bc29;
+  padding: 5px 15px;
+  border-radius: 4px;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .logout-button:hover {
-  text-decoration: underline;
+  background-color: #e1bc29;
+  color: #855117;
 }
 
-.signup-link {
-  flex-shrink: 0;
+.signup-link a {
+  background-color: #e1bc29;
+  color: #855117;
+  padding: 5px 15px;
+  border-radius: 4px;
+}
+
+.signup-link a:hover {
+  background-color: #297045;
+  color: #e1bc29;
 }

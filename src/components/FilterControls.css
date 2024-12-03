@@ -1,0 +1,142 @@
+/* main filter container - wood style bg */
+.filter-controls {
+  background: linear-gradient(145deg, #e6d5b8, #e0c9a6);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 2px solid #b89b76;
+}
+
+/* each filter section */
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+}
+
+/* labels for filters */
+.filter-section label {
+  color: #4b5563;
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* style all the inputs */
+.search-input,
+.date-input,
+select {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 0.95rem;
+  background-color: #f8fafc;
+  transition: all 0.2s ease;
+  color: #1f2937;
+}
+
+/* make inputs look nice when focused */
+.search-input:focus,
+.date-input:focus,
+select:focus {
+  background-color: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* placeholder text */
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* date input */
+.date-input {
+  min-width: 140px;
+  cursor: pointer;
+}
+
+/* clear date button */
+.clear-date-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.clear-date-btn:hover {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* select input */
+select {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+}
+
+/* filter button */
+.filter-button {
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  color: #4b5563;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filter-button.active {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.filter-button:hover:not(.active) {
+  background-color: #f1f5f9;
+  border-color: #d1d5db;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .filter-controls {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .filter-section {
+    min-width: 100%;
+  }
+
+  .search-input,
+  .date-input,
+  select,
+  .filter-button {
+    padding: 0.625rem 0.875rem;
+  }
+}
