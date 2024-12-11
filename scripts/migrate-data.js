@@ -72,5 +72,4 @@ async function migrateData() {
   }
 }
 
-// lets do this
 migrateData();

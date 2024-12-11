@@ -26,5 +26,9 @@
     "content": "# grr",
     "imageUrl": "http://localhost:3001/uploads/1732421867405.jpg",
     "author": "User4"
+  },
+  {
+    "title": "Test Post",
+    "content": "This is a test post content"
   }
 ]

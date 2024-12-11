@@ -28,5 +28,10 @@
   {
     "email": "ryan.makela2004@gmail.com",
     "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEwNzgwMzUzMzU3ODI5Njk4MTA5MiIsImlhdCI6MTczMjQyMTQyMSwiZXhwIjoxNzMyNDI1MDIxfQ._oXAjfz0f_3yyCLdE9_nsOHxXb5-kXjG4H6uSrCPTA0"
+  },
+  {
+    "email": "test@example.com",
+    "password": "$2b$10$ppIIaNKTDcHiGnk9Z5jt4uNq0DyAZlE7diuBcqXXejUSR4oGCZqn.",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTczMjQyNjgyNjQ5OCwiaWF0IjoxNzMyNDI2ODI2LCJleHAiOjE3MzI0MzA0MjZ9.dfoc7UnpMjDc2NXP7J5XXohsEiNX9JjFjx7VWMiV2DE"
   }
 ]
