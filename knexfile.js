@@ -9,6 +9,9 @@ module.exports = {
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD,
       port: process.env.DB_PORT || 5432,
+      ssl: {
+        rejectUnauthorized: false
+      }
     },
     pool: {
       min: 2,
@@ -25,7 +28,16 @@ module.exports = {
 
   production: {
     client: 'postgresql',
-    connection: process.env.DATABASE_URL,
+    connection: {
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl: {
+        rejectUnauthorized: false
+      }
+    },
     pool: {
       min: 2,
       max: 10

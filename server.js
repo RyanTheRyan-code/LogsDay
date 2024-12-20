@@ -1,4 +1,5 @@
 // grab all the stuff we need
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { OAuth2Client } = require('google-auth-library');
@@ -6,8 +7,19 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const path = require('path');
-const db = require('./db/config');
-require('dotenv').config();
+const knex = require('knex');
+const db = knex({
+  client: 'pg',
+  connection: {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: false }
+  },
+  pool: { min: 0, max: 7 }
+});
 const fs = require('fs');
 
 const app = express();
@@ -106,23 +118,18 @@ app.get('/projects', authenticateToken, async (req, res) => {
   }
 });
 
-// make a new project
+// create new project
 app.post('/projects', authenticateToken, async (req, res) => {
   try {
     const { name, description } = req.body;
-    console.log('Creating project with:', { name, description, profile_id: req.user.id });
-    
     const [project] = await db('projects')
       .insert({
-        profile_id: req.user.id,
         name,
         description,
-        created_at: db.fn.now()
+        profile_id: req.user.id
       })
       .returning('*');
-      
-    console.log('Created project:', project);
-    res.json(project);
+    res.status(201).json(project);
   } catch (error) {
     console.error('Error creating project:', error);
     res.status(500).json({ error: 'Failed to create project' });
@@ -382,10 +389,25 @@ app.get('/posts', authenticateToken, async (req, res) => {
   try {
     console.log('Fetching posts for user:', req.user);
     
-    let query = db('posts')
-      .join('profiles', 'posts.profile_id', 'profiles.id')
-      .leftJoin('projects', 'posts.project_id', 'projects.id')
-      .leftJoin('media', 'posts.id', 'media.post_id');
+    let query = db
+      .select(
+        'p.id',
+        'p.title',
+        'p.content',
+        'p.created_at',
+        'p.post_index',
+        'p.project_id',
+        db.raw('p.location::text as location_text'),
+        'proj.name as project_name',
+        'prof.name as author_name',
+        'prof.email as author_email',
+        'prof.profile_picture_url',
+        db.raw('(SELECT COALESCE(json_agg(m.* ORDER BY m.created_at), \'[]\'::json) FROM media m WHERE m.post_id = p.id) as media')
+      )
+      .from('posts as p')
+      .join('profiles as prof', 'p.profile_id', 'prof.id')
+      .leftJoin('projects as proj', 'p.project_id', 'proj.id')
+      .orderBy('p.created_at', 'desc');
 
     if (req.query.date) {
       const date = new Date(req.query.date);
@@ -393,46 +415,33 @@ app.get('/posts', authenticateToken, async (req, res) => {
       const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
       
       console.log('Date filter:', { startOfDay, endOfDay });
-      query = query.whereBetween('posts.created_at', [startOfDay, endOfDay]);
+      query = query.whereBetween('p.created_at', [startOfDay, endOfDay]);
     }
 
     const sql = query.toString();
     console.log('SQL Query:', sql);
 
-    const posts = await query
-      .select(
-        'posts.id',
-        'posts.title',
-        'posts.content',
-        'posts.created_at',
-        'posts.streak_day',
-        'posts.project_id',
-        'posts.profile_id',
-        'projects.name as project_name',
-        'profiles.name as author_name',
-        'profiles.email as author_email',
-        'profiles.profile_picture_url',
-        db.raw('COALESCE(json_agg(media.* ORDER BY media.created_at) FILTER (WHERE media.id IS NOT NULL), \'[]\'::json) as media')
-      )
-      .groupBy(
-        'posts.id',
-        'posts.title',
-        'posts.content',
-        'posts.created_at',
-        'posts.streak_day',
-        'posts.project_id',
-        'posts.profile_id',
-        'projects.name',
-        'profiles.name',
-        'profiles.email',
-        'profiles.profile_picture_url'
-      )
-      .orderBy('posts.created_at', 'desc');
+    const posts = await query;
+
+    // Parse location text into longitude and latitude
+    const processedPosts = posts.map(post => {
+      if (post.location_text) {
+        const match = post.location_text.match(/\((.*?),(.*?)\)/);
+        if (match) {
+          post.longitude = parseFloat(match[1]);
+          post.latitude = parseFloat(match[2]);
+        }
+        delete post.location_text;
+      }
+      return post;
+    });
 
     console.log('Found posts:', posts.length);
-    console.log('Sample post:', posts[0]);
+    if (posts.length > 0) {
+      console.log('Sample post:', posts[0]);
+    }
 
-    res.json(posts);
+    res.json(processedPosts);
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
@@ -473,7 +482,6 @@ app.get('/projects/:id/posts', authenticateToken, async (req, res) => {
         'profiles.profile_picture_url'
       )
       .orderBy('posts.post_index', 'asc');
-
     res.json(posts);
   } catch (error) {
     console.error('Error fetching project posts:', error);
@@ -488,13 +496,13 @@ app.post('/posts', authenticateToken, upload.array('images'), async (req, res) =
     console.log('Received files:', req.files);
     console.log('User:', req.user);
 
-    const { title, content, project_id } = req.body;
+    const { title, content, project_id, latitude, longitude } = req.body;
     
     if (!project_id) {
       return res.status(400).json({ error: 'Project ID is required' });
     }
 
-    console.log('Creating post with:', { title, content, project_id, userId: req.user.id });
+    console.log('Creating post with:', { title, content, project_id, userId: req.user.id, latitude, longitude });
     
     const result = await db('posts')
       .where({ project_id })
@@ -504,6 +512,9 @@ app.post('/posts', authenticateToken, upload.array('images'), async (req, res) =
 
     console.log('Next post index:', post_index);
 
+    // Create PostgreSQL point using proper syntax
+    const location = latitude && longitude ? db.raw('point(?, ?)', [longitude, latitude]) : null;
+
     const [newPost] = await db('posts')
       .insert({
         profile_id: req.user.id,
@@ -512,7 +523,8 @@ app.post('/posts', authenticateToken, upload.array('images'), async (req, res) =
         content,
         post_index,
         created_at: db.fn.now(),
-        streak_day: req.body.streak_day
+        streak_day: req.body.streak_day,
+        location
       })
       .returning('*');
 
