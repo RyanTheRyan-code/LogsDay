@@ -8,6 +8,7 @@ import PrivateRoute from './components/PrivateRoute';
 import NavBar from './components/NavBar';
 import GoogleCallback from './components/GoogleCallback';
 import Projects from './components/Projects';
+import CreatePost from './components/CreatePost';
 
 function App() {
   return (
@@ -17,11 +18,15 @@ function App() {
         <div className="content">
           <Routes>
             { /* all our pages */ }
-            <Route path="/" element={<Logs />} />
-            <Route path="/projects/:id" element={<Projects />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/calendar" element={<PrivateRoute element={Calendar} />} />
+            <Route element={<PrivateRoute />}>
+              <Route path="/" element={<Logs />} />
+              <Route path="/logs" element={<Logs />} />
+              <Route path="/create-post" element={<CreatePost />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/projects/:id" element={<Projects />} />
+            </Route>
             { /* google auth stuff */ }
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="/oauth-callback" element={<GoogleCallback />} />

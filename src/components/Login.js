@@ -24,13 +24,16 @@ const Login = () => {
     
     try {
       // hit the backend to log in
+      console.log('Attempting login with URL:', `${process.env.REACT_APP_BACKEND_URL}/login`);
       const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       
+      console.log('Login response status:', response.status);
       const data = await response.json();
+      console.log('Login response data:', data);
       
       if (response.ok) {
         // we're in! save the token n go home

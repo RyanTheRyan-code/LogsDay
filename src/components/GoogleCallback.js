@@ -11,7 +11,6 @@ function GoogleCallback() {
     const error = params.get('error');
 
     if (token) {
-      // Store the token
       localStorage.setItem('token', token);
       navigate('/');
     } else if (error) {

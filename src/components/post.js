@@ -1,5 +1,5 @@
 // handles individual post display and actions
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +7,9 @@ import './Logs.css';
 
 function Post({ post, onDelete }) {
   const navigate = useNavigate();
+  const [showFullContent, setShowFullContent] = useState(false);
+  const contentPreviewLength = 150;
+  const hasLongContent = post.content && post.content.length > contentPreviewLength;
 
   // yeet the post
   const handleDelete = async () => {
@@ -68,6 +71,26 @@ function Post({ post, onDelete }) {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  const renderLocation = () => {
+    if (post.latitude && post.longitude) {
+      return (
+        <div className="post-location">
+          <span role="img" aria-label="location" className="location-icon">📍</span>
+          <a 
+            href={`https://www.google.com/maps?q=${post.latitude},${post.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="location-link"
+            title={`View on Google Maps (${post.latitude.toFixed(4)}, ${post.longitude.toFixed(4)})`}
+          >
+            <span className="location-text">View on Maps</span>
+          </a>
+        </div>
+      );
+    }
+    return null;
+  };
+
   // get project name
   const getProjectName = () => {
     return post.project_name || 'Unknown Project';
@@ -77,7 +100,7 @@ function Post({ post, onDelete }) {
   const getMediaUrl = (url) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
-    return `http://localhost:3001${url}`;
+    return `${process.env.REACT_APP_BACKEND_URL}${url}`;
   };
 
   // download media
@@ -119,6 +142,7 @@ function Post({ post, onDelete }) {
             </span>
             <span>{formatDate(post.created_at)}</span>
             {post.streak_day && <span>Streak Day {post.streak_day}</span>}
+            {renderLocation()}
           </div>
         </div>
         {isCurrentUserPost && (

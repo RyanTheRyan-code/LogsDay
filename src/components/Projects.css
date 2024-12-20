@@ -55,7 +55,7 @@
 
 .project-title {
   font-size: 2rem;
-  color: #13070c;
+  color: #000000;
   margin: 0;
   padding: 0;
   border-bottom: 2px solid rgba(133, 81, 23, 0.2);
@@ -434,7 +434,7 @@
 
 .project-title {
   font-size: 2rem;
-  color: #13070c;
+  color: #000000;
   margin: 0;
   padding-bottom: 0.5rem;
 }

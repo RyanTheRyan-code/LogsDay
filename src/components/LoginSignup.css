@@ -1,59 +1,113 @@
 .form-page {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    background-color: #938F3D;
-    position: relative;
-  }
-  
-  .wood {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 70%;
-    height: 100vh;
-    background-color: rgb(133, 81, 23);
-    z-index: -1;
-  }
-  
-  .form-container {
-    z-index: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 400px;
-    padding: 20px;
-    background-color: #D4A373;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  }
-  
-  .login-signup-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    width: 100%;
-  }
-  
-  .login-signup-form input {
-    padding: 10px;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-  
-  .login-signup-form button {
-    padding: 10px;
-    background-color: #E8DD13;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    border-radius: 5px;
-  }
-  
-  .login-signup-form button:hover {
-    background-color: #D4BD0A;
-  }
+  min-height: 100vh;
+  width: 100vw;
+  position: relative;
+  margin: 0;
+  padding: 2rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  background: linear-gradient(
+    to right,
+    #297045 0%,
+    #297045 15%,
+    transparent 15%,
+    transparent 85%,
+    #297045 85%,
+    #297045 100%
+  );
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.wood {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  min-height: 100%;
+  height: 100%;
+  background: 
+    linear-gradient(
+      145deg,
+      rgba(139, 69, 19, 0.3),
+      rgba(160, 82, 45, 0.4)
+    ),
+    url('../assets/bark-texture.jpg');
+  background-size: 50%;
+  background-repeat: repeat;
+  opacity: 0.9;
+  z-index: -1;
+}
+
+.form-container {
+  background: linear-gradient(145deg, #deb887, #cd853f);
+  border-radius: 20px;
+  padding: 2rem;
+  margin: 2rem auto;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Playfair Display', serif;
+}
+
+.login-signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.login-signup-form input {
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: 2px solid rgba(74, 48, 0, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #4a3000;
+  font-family: 'Playfair Display', serif;
+}
+
+.login-signup-form input:focus {
+  outline: none;
+  border-color: #4a3000;
+}
+
+.login-signup-form button {
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #297045;
+  color: white;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  font-family: 'Playfair Display', serif;
+}
+
+.login-signup-form button:hover {
+  background: #1e5434;
+  transform: translateY(-2px);
+}
+
+.oauth-button {
+  background: #4a3000 !important;
+}
+
+.oauth-button:hover {
+  background: #3a2500 !important;
+}
+
+.error-message {
+  background: rgba(255, 0, 0, 0.1);
+  border: 1px solid rgba(255, 0, 0, 0.3);
+  color: #4a3000;
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+}

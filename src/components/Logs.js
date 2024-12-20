@@ -1,27 +1,34 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Logs.css';
 import Post from './Post';
 import FilterControls from './FilterControls';
+import barkTexture from '../assets/bark-texture.jpg';
+import woodGrain from '../assets/wood-grain.png';
+
+const styles = {
+  wood: {
+    backgroundImage: `url(${barkTexture})`
+  },
+  woodGrain: {
+    backgroundImage: `url(${woodGrain})`
+  }
+};
 
 function Logs() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
-  const [postTitle, setPostTitle] = useState('');
-  const [postContent, setPostContent] = useState('');
-  const [mediaFiles, setMediaFiles] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [previewImages, setPreviewImages] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [selectedProject, setSelectedProject] = useState('');
-  const [showNewProjectForm, setShowNewProjectForm] = useState(false);
-  const [newProject, setNewProject] = useState({ name: '', description: '' });
-  const [streakDay, setStreakDay] = useState(1);
   const [sortBy, setSortBy] = useState('newest');
   const [filterByMedia, setFilterByMedia] = useState('all');
-  const [filterByStreak, setFilterByStreak] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [streakDay, setStreakDay] = useState(1);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterByStreak, setFilterByStreak] = useState('all');
+  const [token, setToken] = useState(localStorage.getItem('token'));
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -36,10 +43,24 @@ function Logs() {
     fetchProjects();
   }, [dateFilter]);
 
+  useEffect(() => {
+    const updateWoodHeight = () => {
+      const contentContainer = document.querySelector('.content-container');
+      const wood = document.querySelector('.wood');
+      if (contentContainer && wood) {
+        wood.style.height = `${contentContainer.scrollHeight}px`;
+      }
+    };
+
+    updateWoodHeight();
+    window.addEventListener('resize', updateWoodHeight);
+
+    return () => window.removeEventListener('resize', updateWoodHeight);
+  }, [posts]);
+
   const fetchPosts = async () => {
     try {
-      const token = localStorage.getItem('token');
-      let url = 'http://localhost:3001/posts';
+      let url = `${process.env.REACT_APP_BACKEND_URL}/posts`;
       
       // slap on the date filter if we got one
       if (dateFilter) {
@@ -49,7 +70,7 @@ function Logs() {
       console.log('Fetching posts from:', url);
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token || ''}`
         }
       });
       if (response.ok) {
@@ -73,10 +94,9 @@ function Logs() {
 
   const fetchProjects = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/projects', {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/projects`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token || ''}`
         }
       });
       if (response.ok) {
@@ -93,160 +113,16 @@ function Logs() {
       setPosts(posts.filter(post => post.id !== postId));
     } catch (error) {
       console.error('Error updating posts after deletion:', error);
-      // Refresh posts to ensure consistency
       fetchPosts();
     }
   };
 
-  const handleDragEnter = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    
-    // grab files from the drop
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(
-      file => file.type.startsWith('image/') || file.type.startsWith('video/')
-    );
-    
-    // show previews for images
-    const newPreviewImages = droppedFiles.map(file => ({
-      file,
-      preview: URL.createObjectURL(file)
-    }));
-    
-    setMediaFiles(prev => [...prev, ...droppedFiles]);
-    setPreviewImages(prev => [...prev, ...newPreviewImages]);
-  };
-
-  const handleFileSelect = (e) => {
-    const files = Array.from(e.target.files).filter(file => 
-      file.type.startsWith('image/') || file.type.startsWith('video/')
-    );
-    setMediaFiles(prevFiles => [...prevFiles, ...files]);
-    
-    // Generate preview URLs
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewImages(prev => [...prev, {
-          file,
-          preview: reader.result,
-          type: file.type.startsWith('video/') ? 'video' : 'image'
-        }]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removePreview = (index) => {
-    setPreviewImages(prev => prev.filter((_, i) => i !== index));
-    setMediaFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleCreateProject = async (e) => {
-    e.preventDefault();
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/projects', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(newProject)
-      });
-
-      if (response.ok) {
-        const project = await response.json();
-        setProjects([...projects, project]);
-        setSelectedProject(project.id.toString());
-        setNewProject({ name: '', description: '' });
-        setShowNewProjectForm(false);
-      }
-    } catch (error) {
-      setError('Failed to create project');
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // prep the form data with all our stuff
-      const formData = new FormData();
-      formData.append('title', postTitle);
-      formData.append('content', postContent);
-      formData.append('project_id', selectedProject);
-      formData.append('streak_day', streakDay);
-      
-      // add any pics or vids
-      mediaFiles.forEach(file => {
-        formData.append('images', file);
-      });
-
-      console.log('Submitting post with:', {
-        title: postTitle,
-        content: postContent,
-        project_id: selectedProject,
-        streak_day: streakDay,
-        imageCount: mediaFiles.length
-      });
-
-      const response = await fetch('http://localhost:3001/posts', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create post');
-      }
-
-      const newPost = await response.json();
-      console.log('Created post:', newPost);
-      setPosts(prevPosts => [newPost, ...prevPosts]);
-      
-      // Reset form
-      setPostTitle('');
-      setPostContent('');
-      setMediaFiles([]);
-      setStreakDay(1);
-      
-    } catch (error) {
-      console.error('Error creating post:', error);
-      setError(error.message || 'Failed to create post. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Add new function to filter and sort posts
+  
   const getFilteredAndSortedPosts = () => {
     let filteredPosts = [...posts];
     console.log('Initial posts:', filteredPosts.length);
 
-    // Apply search filter
+    
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filteredPosts = filteredPosts.filter(post => 
@@ -258,26 +134,32 @@ function Logs() {
       console.log('After search filter:', filteredPosts.length);
     }
 
-    // Apply date filter
+    
     if (dateFilter) {
-      // Create date object and adjust for timezone
-      const filterDate = new Date(dateFilter + 'T00:00:00');
-      const filterEndDate = new Date(dateFilter + 'T23:59:59.999');
+      const filterDate = new Date(dateFilter + 'T00:00:00-08:00');
+      const filterStart = filterDate.toISOString().split('T')[0];
+      const nextDay = new Date(filterDate);
+      nextDay.setDate(filterDate.getDate() + 1);
+      const filterEnd = nextDay.toISOString().split('T')[0];
       
       console.log('Filtering by date:', {
-        filterDate: filterDate.toISOString(),
-        filterEndDate: filterEndDate.toISOString()
+        dateFilter,
+        filterStart,
+        filterEnd,
+        filterDate: filterDate.toString()
       });
       
       filteredPosts = filteredPosts.filter(post => {
-        const postDate = new Date(post.created_at);
+        const postDate = post.created_at.split('T')[0];
+        const isInRange = postDate >= filterStart && postDate < filterEnd;
+        
         console.log('Checking post:', {
           title: post.title,
           created_at: post.created_at,
-          postDate: postDate.toISOString(),
-          isInRange: postDate >= filterDate && postDate <= filterEndDate
+          postDate,
+          isInRange
         });
-        return postDate >= filterDate && postDate <= filterEndDate;
+        return isInRange;
       });
       console.log('After date filter:', filteredPosts.length);
     }
@@ -315,7 +197,6 @@ function Logs() {
       }
     }
 
-    // Apply streak filter
     switch (filterByStreak) {
       case 'active':
         filteredPosts = filteredPosts.filter(post => post.streakDay > 1);
@@ -329,7 +210,6 @@ function Logs() {
         break;
     }
 
-    // Apply sorting
     switch (sortBy) {
       case 'oldest':
         filteredPosts.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -351,184 +231,43 @@ function Logs() {
 
   return (
     <div className="Logs">
-      <div className="wood"></div>
-      <div className="main-container">
-        <aside className="sidebar">
-          <div className="create-post-form">
-            <h2>Create New Log</h2>
-            <div className="form-group">
-              <label htmlFor="project">Project</label>
-              <div className="project-selection">
-                <select
-                  id="project"
-                  value={selectedProject}
-                  onChange={(e) => setSelectedProject(e.target.value)}
-                  className="form-control"
-                >
-                  <option value="">Select a project</option>
-                  {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="button secondary"
-                  onClick={() => setShowNewProjectForm(!showNewProjectForm)}
-                >
-                  {showNewProjectForm ? 'Cancel' : 'New'}
-                </button>
-              </div>
-            </div>
+      <div className="wood" style={styles.wood}></div>
+      <div className="content-container">
+        <FilterControls
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          filterByMedia={filterByMedia}
+          setFilterByMedia={setFilterByMedia}
+          filterByStreak={filterByStreak}
+          setFilterByStreak={setFilterByStreak}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          dateFilter={dateFilter}
+          setDateFilter={setDateFilter}
+        />
+        
+        <button 
+          className="create-post-button" 
+          onClick={() => navigate('/create-post')}
+        >
+          Create New Log
+        </button>
 
-            {showNewProjectForm && (
-              <div className="new-project-form">
-                <input
-                  type="text"
-                  placeholder="Project Name"
-                  value={newProject.name}
-                  onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                  className="form-control"
-                />
-                <textarea
-                  placeholder="Project Description"
-                  value={newProject.description}
-                  onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
-                  className="form-control"
-                />
-                <button 
-                  type="button"
-                  className="button" 
-                  onClick={handleCreateProject}
-                >
-                  Create Project
-                </button>
-              </div>
-            )}
-
-            <div className="form-group">
-              <label htmlFor="title">Title</label>
-              <input
-                type="text"
-                id="title"
-                value={postTitle}
-                onChange={(e) => setPostTitle(e.target.value)}
-                className="form-control"
-                placeholder="Log Titel!"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="content">Content</label>
-              <textarea
-                id="content"
-                value={postContent}
-                onChange={(e) => setPostContent(e.target.value)}
-                className="form-control"
-                rows="4"
-                placeholder="Log Content!"
-              />
-            </div>
-
-            <div
-              className={`file-drop-zone ${isDragging ? 'drag-active' : ''}`}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            >
-              <p>Drag & drop files here or click to select</p>
-              <input
-                type="file"
-                multiple
-                onChange={handleFileSelect}
-                style={{ display: 'none' }}
-                id="file-input"
-              />
-              <label htmlFor="file-input" className="button secondary">
-                Choose Files
-              </label>
-            </div>
-
-            {previewImages.length > 0 && (
-              <div className="preview-images">
-                {previewImages.map((preview, index) => (
-                  <div key={index} className="preview-image-container">
-                    {preview.type === 'video' ? (
-                      <video 
-                        src={preview.preview} 
-                        className="preview-image"
-                        controls
-                      />
-                    ) : (
-                      <img 
-                        src={preview.preview} 
-                        alt={`Preview ${index + 1}`} 
-                        className="preview-image" 
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="remove-preview"
-                      onClick={() => removePreview(index)}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="button"
-              onClick={handleSubmit}
-              disabled={isLoading || !selectedProject}
-            >
-              {isLoading ? 'Posting...' : 'Create Post'}
-            </button>
-          </div>
-
-          <div className="filter-controls">
-            <FilterControls
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              filterByMedia={filterByMedia}
-              setFilterByMedia={setFilterByMedia}
-              filterByStreak={filterByStreak}
-              setFilterByStreak={setFilterByStreak}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              dateFilter={dateFilter}
-              setDateFilter={setDateFilter}
-            />
-          </div>
-        </aside>
-
-        <main className="feed">
+        <div className="posts-container">
           {error && <div className="error-message">{error}</div>}
-          
-          <div className="posts-container">
-            {isLoading ? (
-              <div className="loading-spinner">Loading...</div>
-            ) : posts.length === 0 ? (
-              <div className="no-posts">
-                <h3>No posts yet</h3>
-                <p>Create your first post to get started!</p>
-              </div>
-            ) : (
-              getFilteredAndSortedPosts().map((post) => (
-                <Post
-                  key={post.id}
-                  post={post}
-                  onDelete={handleDeletePost}
-                  projects={projects}
-                />
-              ))
-            )}
-          </div>
-        </main>
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : (
+            getFilteredAndSortedPosts().map((post) => (
+              <Post
+                key={post.id}
+                post={post}
+                onDelete={handleDeletePost}
+                projects={projects}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './Calendar.css';
 import Button from '@mui/material/Button';
+import barkTexture from '../assets/bark-texture.jpg';
 
 function Calendar() {
   // grab today's date stuff
